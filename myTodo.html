@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Todo List</title>
+  <link rel="stylesheet" href="css/index.css">
+</head>
+
+<body>
+  <section class="todoapp">
+    <todo></todo>
+  </section>
+  <script src="js/vue.js"></script>
+  <script>
+    //储存数据函数
+    function savedata(data) {
+      localStorage.setItem('myData', JSON.stringify(data));
+    }
+    //提取数据函数
+    function takedata() {
+      return JSON.parse(localStorage.getItem('myData'));
+    }
+
+    Vue.directive('focus', {
+      update: function (el) {
+        el.focus()
+      }
+    })
+    var tinput = {
+      data() {
+        return {
+          text: ''
+        }
+      },
+      template: `
+      <header class="header">
+        <h1>todos</h1>
+        <input id="task" class="new-todo" placeholder="添加新任务" autofocus v-model='text' @keyup.enter='inputtxt'>
+      </header>
+      `,
+      methods: {
+        inputtxt() {
+          this.$emit("mytitle", this.text);
+          this.text = '';
+        }
+      }
+    }
+    var tlist = {
+      props: ['list'],
+      data() {
+        return {
+          isediting: 0,
+          text: ''
+        }
+      },
+      template: `
+      <section class="main">
+      <ul class="todo-list" id="todo-list">
+        <!-- li默认是未完成状态
+        li的类名如果设置为completed，则是完成状态 -->
+        <li :class="item.completed? 'completed':''+''+isediting==item.id&&'editing'"  v-for='item in list' :key='item.id'>
+          <div class="view">
+            <input class="toggle" type="checkbox" :checked='item.completed' @change="$emit('mychange',item.id)">
+            <label @dblclick='myedit(item.id,item.title)'>{{item.title}}</label>
+            <button class="destroy" @click="$emit('delOne',item.id)"></button>
+          </div>
+          <input class="edit" v-model="text" @keyup.enter="$event.target.blur" @blur="editing(item.id,text)" v-focus >
+        </li>
+      </ul>
+      </section>
+      `,
+      methods: {
+        myedit(id, txt) {
+          this.isediting = id;
+          this.text = txt;
+        },
+        editing(id, txt) {
+          this.$emit('myedit', id, txt);
+          this.isediting = 0;
+        }
+      }
+    }
+    var ttotal = {
+      props: ['list'],
+      template: `
+      <footer class="footer">
+      <span class="todo-count"><strong>{{sum}}</strong> item left(未完成数量)</span>
+      <button class="clear-completed" @click='$emit("delALL")'>Clear completed(清除所有已完成)</button>
+      </footer>
+      `,
+      computed: {
+        sum() {
+          return this.list.filter(item => item.completed == false).length;
+        }
+      }
+    }
+    Vue.component('todo', {
+      data() {
+        return {
+          todos: takedata()
+        }
+      },
+      template: `
+      <div>
+        <t-input @mytitle='title'></t-input>
+        <t-list :list='todos' @delOne='delOne' @mychange='change' @myedit='myedit'></t-list>
+        <t-total :list='todos' @delALL='delALL'></t-total>
+      </div>
+      `,
+      components: {
+        't-input': tinput,
+        't-list': tlist,
+        't-total': ttotal
+      },
+      methods: {
+        change(id) {
+          var item = this.todos.find(item => item.id == id);
+          item.completed = !item.completed;
+          savedata(this.todos);
+        },
+        delOne(id) {
+          var index = this.todos.findIndex(item => item.id == id);
+          this.todos.splice(index, 1);
+          savedata(this.todos);
+        },
+        delALL() {
+          this.todos = this.todos.filter(item => item.completed == false);
+          savedata(this.todos);
+        },
+        title(text) {
+          var obj = {
+            id: this.todos.length ? (this.todos[this.todos.length - 1].id + 1) : 1,
+            title: text,
+            completed: false,
+          };
+          this.todos.push(obj);
+          savedata(this.todos);
+        },
+        myedit(id, txt) {
+          var item = this.todos.find(item => item.id == id);
+          item.title = txt;
+          savedata(this.todos);
+        }
+      }
+    })
+    new Vue({
+      el: ".todoapp",
+    })
+  </script>
+</body>
+
+</html>
